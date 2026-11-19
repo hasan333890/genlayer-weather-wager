@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhaka Weather Wager — GenLayer Intelligent Contract</title>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8;
+          --accent: #38bdf8; --green: #4ade80; --border: #334155; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { text-align: center; padding: 32px 0 8px; }
+  header h1 { font-size: 2.2rem; margin: 0 0 8px; }
+  header p { color: var(--muted); margin: 4px 0; }
+  .badge { display: inline-block; background: var(--card); border: 1px solid var(--border);
+           border-radius: 999px; padding: 4px 14px; font-size: 0.85rem; color: var(--accent);
+           margin-top: 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+          padding: 20px; margin-top: 20px; }
+  .card h2 { margin-top: 0; font-size: 1.25rem; }
+  .card h3 { margin-bottom: 4px; }
+  .muted { color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px; text-align: center; }
+  .stat .big { font-size: 1.6rem; font-weight: 700; }
+  .stat .label { color: var(--muted); font-size: 0.85rem; }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 12px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap;
+        word-break: break-word; }
+  .addr { word-break: break-all; }
+  a { color: var(--accent); }
+  .btn { display: inline-block; background: var(--accent); color: #082f49; border: none;
+         border-radius: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer;
+         text-decoration: none; font-size: 0.9rem; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .steps { counter-reset: step; padding-left: 0; list-style: none; }
+  .steps li { counter-increment: step; margin: 14px 0; padding-left: 44px; position: relative; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #082f49;
+    font-weight: 700; text-align: center; line-height: 30px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🌧️ Dhaka Weather Wager</h1>
+    <p>Bet yes or no — will it rain in Dhaka tomorrow?</p>
+    <p class="muted">An original intelligent contract on GenLayer. The contract reads real
+       weather data from the web and settles every bet on-chain.</p>
+    <span class="badge">GenLayer Studio Network (studionet) · Testnet only · No real money</span>
+  </header>
+
+  <div class="card" id="live-weather-card">
+    <h2>☁️ Live Dhaka forecast — same data the contract uses</h2>
+    <p class="muted">Source: Open-Meteo API (free, no key). The contract reads this same
+       feed when a round is resolved.</p>
+    <div class="grid" id="live-weather">
+      <div class="stat"><div class="big">…</div><div class="label">Loading forecast…</div></div>
+    </div>
+    <p class="muted" id="weather-note" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="card">
+    <h2>🎮 How to play</h2>
+    <ol class="steps">
+      <li><strong>Create a round</strong> — call <code>create_round("YYYY-MM-DD")</code>
+        for the day you want to bet on (usually tomorrow). One round per date, shared by everyone.</li>
+      <li><strong>Place your wager</strong> — call <code>place_wager("YYYY-MM-DD", true)</code>
+        if you think it will rain, or <code>false</code> if you think it will stay dry.
+        One wager per player per round.</li>
+      <li><strong>Resolve the round</strong> — after the date has passed, anyone calls
+        <code>resolve_round("YYYY-MM-DD")</code>. The contract fetches Dhaka's real rainfall
+        from Open-Meteo and the validators must agree on the result.</li>
+      <li><strong>Claim your result</strong> — call <code>claim_result("YYYY-MM-DD")</code>.
+        A correct prediction earns <strong>1 point</strong> and extends your winning streak;
+        a wrong one resets your streak to zero. Check the leaderboard with
+        <code>get_leaderboard()</code>.</li>
+    </ol>
+    <p class="muted">Rainy day = at least <strong>0.1&nbsp;mm</strong> of rain recorded for Dhaka on that date.</p>
+    <p>Try it in GenLayer Studio — connect the same wallet used for deployment,
+       open the contract below, and call the methods:</p>
+    <p>
+      <a class="btn" id="explorer-link" href="https://explorer-studio.genlayer.com/" target="_blank" rel="noopener">View contract on Studio Explorer</a>
+      <a class="btn ghost" href="https://github.com/hasan333890/genlayer-weather-wager" target="_blank" rel="noopener">GitHub repo</a>
+    </p>
+    <p class="muted">Contract address: <code class="addr" id="contract-address">not deployed yet</code></p>
+  </div>
+
+  <div class="card">
+    <h2>🧪 Demo commands</h2>
+    <p class="muted">Deployment runs from the project folder on a PC with the GenLayer CLI.
+       (Tomorrow's date is filled in automatically.)</p>
+    <pre id="deploy-cmd">genlayer network set studionet
+genlayer deploy --contract contracts/weather_wager.py</pre>
+    <button class="btn ghost" data-copy="deploy-cmd">Copy</button>
+    <h3>Example round for tomorrow (<code id="tomorrow-date">…</code>)</h3>
+    <pre id="play-cmd">create_round("<span class="tomorrow">YYYY-MM-DD</span>")          // open the round
+place_wager("<span class="tomorrow">YYYY-MM-DD</span>", true)   // true = rain, false = dry
+resolve_round("<span class="tomorrow">YYYY-MM-DD</span>")       // after the day has passed
+claim_result("<span class="tomorrow">YYYY-MM-DD</span>")        // collect your point</pre>
+    <button class="btn ghost" data-copy="play-cmd">Copy</button>
+  </div>
+
+  <div class="card">
+    <h2>✨ What makes it original</h2>
+    <p class="muted">Built from scratch — not a copy of the <code>football_bets.py</code> example
+       from the GenLayer boilerplate.</p>
+    <table>
+      <tr><th>Football Bets (example)</th><th>Dhaka Weather Wager (this project)</th></tr>
+      <tr><td>Football match winner</td><td>Rain or no rain in Dhaka — a weather question</td></tr>
+      <tr><td>BBC Sport scores page</td><td>Open-Meteo weather API (free, no key, JSON)</td></tr>
+      <tr><td>Each player keeps private bets</td><td>One shared round per date — everyone bets together, with live yes/no counts</td></tr>
+      <tr><td>Points settled inside resolve</td><td>Two-step settle: <code>resolve_round</code> fixes the weather, then each player claims with <code>claim_result</code></td></tr>
+      <tr><td>Points only</td><td>Points + winning streaks (current &amp; best) + sorted leaderboard view</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>📜 Contract methods</h2>
+    <table>
+      <tr><th>Method</th><th>What it does</th></tr>
+      <tr><td><code>create_round(date)</code></td><td>Open a new round for a date (YYYY-MM-DD)</td></tr>
+      <tr><td><code>place_wager(date, rain?)</code></td><td>Bet yes/no on rain for that round</td></tr>
+      <tr><td><code>resolve_round(date)</code></td><td>Fetch real Dhaka rainfall, settle the round</td></tr>
+      <tr><td><code>claim_result(date)</code></td><td>Collect your point / update your streak</td></tr>
+      <tr><td><code>get_round(date)</code></td><td>Round details + yes/no counts</td></tr>
+      <tr><td><code>get_rounds()</code></td><td>All rounds</td></tr>
+      <tr><td><code>get_wager(date, player)</code></td><td>One player's wager on a round</td></tr>
+      <tr><td><code>get_player_stats(player)</code></td><td>Points, wagers, streaks for a player</td></tr>
+      <tr><td><code>get_leaderboard()</code></td><td>All players sorted by points</td></tr>
+    </table>
+  </div>
+
+  <footer>
+    Built by Md. Nahid Hasan (GitHub: hasan333890) · GenLayer intelligent contract ·
+    Testnet demo — no real money, no prizes.<br>
+    Weather data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> ·
+    Network: <a href="https://docs.genlayer.com/" target="_blank" rel="noopener">GenLayer docs</a>
+  </footer>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
